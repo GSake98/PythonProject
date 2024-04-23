@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, Dropout
-from keras.callbacks import EarlyStopping
+from keras.models import Sequential # type: ignore
+from keras.layers import Dense, LSTM, Dropout # type: ignore
+from keras.callbacks import EarlyStopping # type: ignore
 import yfinance as yf
 from ta import add_all_ta_features  # Ensure 'ta' is installed
 import os
