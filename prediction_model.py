@@ -10,11 +10,17 @@ from keras.callbacks import EarlyStopping # type: ignore
 import yfinance as yf
 from ta import add_all_ta_features  # Ensure 'ta' is installed
 import os
+import time
+import alpaca_trade_api as tradeapi
+from datetime import datetime, timedelta
+import pytz
 
 # API keys setup (make sure to replace these with your own keys or environment variables)
 os.environ['APCA_API_KEY_ID'] = 'PKJMZ0P3VIK5NND712VA'
 os.environ['APCA_API_SECRET_KEY'] = 'M4ayzNbXH6X4CJQQfcClsALLAsQbKr50KxdyOFAN'
 os.environ['APCA_API_BASE_URL'] = 'https://paper-api.alpaca.markets'
+
+api = tradeapi.REST(os.environ['APCA_API_KEY_ID'], os.environ['APCA_API_SECRET_KEY'], os.environ['APCA_API_BASE_URL'], api_version='v2')
 
 def fetch_data(symbol, period="7d", interval="1m"):
     df = yf.download(symbol, period=period, interval=interval)
@@ -77,6 +83,70 @@ def post_process_and_visualize(actual_prices, predicted_prices):
     plt.show()
     
 
+def fetch_current_price(symbol):
+    """
+    Fetches the current price for the given `symbol`.
+    """
+    try:
+        latest_trade = api.get_latest_trade(symbol)
+        print(f"Current Price: {latest_trade.price}")
+        return latest_trade.price
+    except tradeapi.rest.APIError as e:
+        print(f"APIError: {e}")
+        return None
+
+def predict_prices(initial_price):
+    """
+    Generate predictions for the next 60 minutes from the initial price.
+    Placeholder for the prediction model.
+    """
+    predictions = [initial_price * (1 + 0.0001 * i) for i in range(3)]  # Example prediction logic
+    return predictions
+
+def is_successful_prediction(predicted, actual, threshold=0.001):
+    """
+    Determines if the prediction is successful within a certain percentage threshold.
+    """
+    return abs(predicted - actual) / actual <= threshold 
+
+def evaluate_predictions(predictions, actual_prices):
+    """
+    Evaluates the predictions against actual prices and calculates the success rate.
+    """
+    successes = [is_successful_prediction(pred, act) for pred, act in zip(predictions, actual_prices)]
+    success_rate = np.mean(successes)
+    print(f"Success Rate: {success_rate * 100:.2f}%")
+    return success_rate
+
+def retrain_model():
+    """
+    Placeholder function for retraining the model.
+    """
+    print("Retraining the model...")
+def fetch_and_compare_prices(symbol):
+    initial_price = fetch_current_price(symbol)
+    if initial_price is None:
+        return
+    
+    predictions = predict_prices(initial_price)
+    
+    actual_prices = []
+    prediction_times = []
+    
+    for i in range(3):  # Fetch prices every minute for the next hour
+        time.sleep(60)  # Wait a minute
+        current_price = fetch_current_price(symbol)
+        if current_price is not None:
+            actual_prices.append(current_price)
+            prediction_times.append(datetime.now(pytz.timezone('America/New_York')))
+    
+    # Store or print comparison results
+    for pred, act, pred_time in zip(predictions, actual_prices, prediction_times):
+        print(f"Time: {pred_time}, Predicted: {pred}, Actual: {act}")
+    success_rate = evaluate_predictions(predictions, actual_prices)
+    if success_rate < 0.996:
+        retrain_model()
+        
 def full_workflow(symbol):
     df = fetch_data(symbol)
     X, y, scaler = preprocess_data(df)
@@ -89,8 +159,9 @@ def full_workflow(symbol):
     post_process_and_visualize(actual_prices, predicted_prices)
     model.save("F:\\PytonTradingBot\\trained_model.h5")
     print("High-performing model saved.")
-
-
+    fetch_current_price(symbol)
+    fetch_and_compare_prices(symbol)
+    
 
 if __name__ == "__main__":
     full_workflow('GH')
